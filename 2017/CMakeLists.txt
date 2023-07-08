@@ -19,15 +19,33 @@ FetchContent_Declare(
 FetchContent_MakeAvailable( fmt )
 FetchContent_MakeAvailable( gtest )
 
+
+set( SRC_PATTERN "day[0-9]+\\.cpp" )
 set( SRC_DIR src )
-set( BOOST_IOSTREAMS_SOURCE_FILE lib/boost/iostreams/mapped_file.cpp )
+set( INC_DIR include )
+set( BOOST_IOSTREAMS_SRC_FILE lib/boost/iostreams/mapped_file.cpp )
+
+file( GLOB INC_FILES ${INC_DIR}/*.hpp )
 file( GLOB SRC_FILES ${SRC_DIR}/*.cpp )
-message( "bitch, source files are ${SRC_FILES}" )
-foreach( SOURCE_FILE ${SRC_FILES} )
-    get_filename_component( EXECUTABLE_NAME ${SOURCE_FILE} NAME_WLE )
-    add_executable( ${EXECUTABLE_NAME} ${SOURCE_FILE} ${BOOST_IOSTREAMS_SOURCE_FILE} )
-    target_compile_features( ${EXECUTABLE_NAME} PUBLIC cxx_std_17 )
-    target_link_libraries( ${EXECUTABLE_NAME} fmt )
-endforeach( SOURCE_FILE ${SOURCE_FILES} )
+
+# this is not modern CMake now is it?
+set( UTIL_SRC_FILES "" )
+foreach( SRC_FILE ${SRC_FILES} )
+    string( REGEX MATCH ${SRC_PATTERN} MATCHED ${SRC_FILE} )
+    if ( NOT MATCHED )
+        set( UTIL_SRC_FILES "${UTIL_SRC_FILES};${SRC_FILE}" )
+    endif()
+endforeach()
+
+foreach( SRC_FILE ${SRC_FILES} )
+    string( REGEX MATCH ${SRC_PATTERN} MATCHED ${SRC_FILE} )
+    if ( MATCHED )
+        get_filename_component( EXECUTABLE_NAME ${SRC_FILE} NAME_WLE )
+        add_executable( ${EXECUTABLE_NAME} ${SRC_FILE} ${UTIL_SRC_FILES} ${BOOST_IOSTREAMS_SRC_FILE} )
+        target_include_directories( ${EXECUTABLE_NAME} PRIVATE ${INC_DIR} )
+        target_compile_features( ${EXECUTABLE_NAME} PUBLIC cxx_std_17 )
+        target_link_libraries( ${EXECUTABLE_NAME} fmt )
+    endif()
+endforeach()
 
 # TODO add googletest etc
