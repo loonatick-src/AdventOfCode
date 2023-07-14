@@ -16,7 +16,6 @@ template <class C, class E>
 int simulate( C& jumps,  E& execute )
 {
     int count = 0;
-    const auto n = jumps.size();
     auto it = jumps.begin();
     while ( it < jumps.end() && it >= jumps.begin() ) {
 	execute( it );

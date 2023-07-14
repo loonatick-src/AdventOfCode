@@ -1,4 +1,7 @@
 #include <algorithm>
+#include <iterator>
+#include <iostream>
+#include <sysexits.h>
 
 #include "utilities.hpp"
 
@@ -23,4 +26,16 @@ std::vector<std::string_view> split( const std::string_view& str, const char del
     std::vector<std::string_view> tokens;
     split_mut( tokens, str, delim );
     return tokens;
+}
+
+int report_errors( std::errc ec ) {
+    if ( ec == std::errc::invalid_argument ) {
+	std::cerr << "That isn't a number.\n";
+	return EX_DATAERR;
+    }
+    else if ( ec == std::errc::result_out_of_range ) {
+	std::cerr << "This number is larger than an int.\n";
+	return EX_DATAERR;
+    }
+    return 0;
 }

@@ -6,6 +6,8 @@
 
 #include <boost/iostreams/device/mapped_file.hpp>
 
+#include "utilities.hpp"
+
 namespace io = boost::iostreams;
 
 typedef uint64_t u64;
@@ -55,8 +57,7 @@ T taxicab( const T& input_value )
     static_assert( std::is_signed<T>::value );
     auto input_fvalue = static_cast<double>( input_value );
     auto lo = static_cast<i64>( floor( sqrt( input_fvalue ) ) );
-    auto hi = lo+1;
-    auto losq = lo * lo; auto hisq = hi * hi;
+    auto losq = lo * lo;
     auto idx = getidx( lo );
     if ( lo % 2 == 0 ) {
 	auto i = -idx; auto j = idx;
@@ -94,7 +95,11 @@ int main( void )
     }
     auto v = std::string_view( input.data(), input.size() );
     i64 input_value = 0;
-    auto rslt = std::from_chars( v.begin(), v.end(), input_value );
+    auto [ptr, ec] = std::from_chars( v.begin(), v.end(), input_value );
+    auto retcode = report_errors( ec );
+    if ( ec != std::errc() ) {
+	return retcode;
+    }
     std::cout << taxicab( input_value ) << '\n';
 
     return 0;

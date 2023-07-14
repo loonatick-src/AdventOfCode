@@ -44,6 +44,8 @@ foreach( SRC_FILE ${SRC_FILES} )
         add_executable( ${EXECUTABLE_NAME} ${SRC_FILE} ${UTIL_SRC_FILES} ${BOOST_IOSTREAMS_SRC_FILE} )
         target_include_directories( ${EXECUTABLE_NAME} PRIVATE ${INC_DIR} )
         target_compile_features( ${EXECUTABLE_NAME} PUBLIC cxx_std_17 )
+	# TODO: this only works for GCC/clang
+	target_compile_options( ${EXECUTABLE_NAME} PRIVATE -Wall -Werror -Wextra )
         target_link_libraries( ${EXECUTABLE_NAME} fmt )
     endif()
 endforeach()

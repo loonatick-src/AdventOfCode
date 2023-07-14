@@ -6,6 +6,8 @@
 #include <string_view>
 #include <charconv>
 
+#include <sysexits.h>
+
 #include "utilities.hpp"
 
 namespace io = boost::iostreams;
@@ -25,9 +27,16 @@ int calculate_checksum( const C& lines )
 	    auto max_elmt = std::numeric_limits<int>::min();
 	    split_mut( tokens, line, '\t');
 	    int current_value;
-	    for ( const auto& tok: tokens )
-		{
-		    auto rslt = std::from_chars( tok.begin(), tok.end(), current_value );
+	    for ( const auto& tok: tokens ) {
+		    auto [ptr, ec] = std::from_chars( tok.begin(), tok.end(), current_value );
+		    if ( ec == std::errc::invalid_argument ) {
+			std::cerr << "That isn't a number.\n";
+			return EX_DATAERR;
+		    }
+		    else if ( ec == std::errc::result_out_of_range ) {
+			std::cout << "This number is larger than an int.\n";
+			return EX_DATAERR;
+		    }
 		    // TODO: consider handling errors in rslt?
 		    min_elmt = std::min( min_elmt, current_value );
 		    max_elmt = std::max( max_elmt, current_value );
