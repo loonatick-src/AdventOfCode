@@ -31,13 +31,6 @@ bool contains_or_insert( S& haystack, V& needle )
 }
 
 template <class V>
-struct Hash {
-    auto operator()( const V& v ) const {
-        return boost::hash_range( v.begin(), v.end() );
-    }
-};
-
-template <class V>
 int realloc_banks( V& banks )
 {
     std::unordered_set<V, Hash<V>> reference_banks;

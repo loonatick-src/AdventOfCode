@@ -3,6 +3,14 @@
 
 #include <vector>
 #include <string_view>
+#include <boost/container_hash/hash.hpp>
+
+template <class V>
+struct Hash {
+    auto operator()( const V& v ) const {
+        return boost::hash_range( v.begin(), v.end() );
+    }
+};
 
 template <class StringType, typename NeedleType>
 void trim_right( StringType &haystack, NeedleType& needle )
@@ -29,6 +37,12 @@ void print_container( IO& io, const Container& container )
 {
     using T = typename Container::value_type;
     std::copy( container.begin(), container.end(), std::ostream_iterator<T>( io ) );
+    return;
+}
+
+template <class Container>
+void print_container( const Container& container ) {
+    print_container( std::cout, container );
     return;
 }
 
