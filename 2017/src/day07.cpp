@@ -22,7 +22,7 @@
 #include <boost/iostreams/device/mapped_file.hpp>
 
 #include "utilities.hpp"
-
+// TODO: consider refactoring to use Boost.Graphs
 namespace io = boost::iostreams;
 namespace phoenix = boost::phoenix;
 namespace qi = boost::spirit::qi;
@@ -44,8 +44,22 @@ struct Program {
     Program() : name { ProgramDescriptor() },
 		weight( 0 ),
 		children { std::vector<ProgramDescriptor>() } {}
+    Program( const ProgramDescriptor& descr ) : name { descr },
+						weight( 0 ),
+						children { std::vector<ProgramDescriptor>() } {}
+    bool operator==( const Program& other ) const noexcept {
+	return this->name == other.name;
+    }
 };
-typedef Program<std::vector<char>>  BasicProgram;
+typedef Program<std::vector<char>> BasicProgram;
+
+template <class V>
+struct SHash {
+    auto operator()( const V& v ) const {
+	const auto& name = v.name;
+	return boost::hash_range( name.begin(), name.end() );
+    }
+};
 
 template <typename Iterator, typename ProgramDescriptor>
 bool parse_prog(Iterator first, Iterator last,
@@ -77,11 +91,16 @@ bool parse_prog(Iterator first, Iterator last,
     return match;
 }
 
-struct Degrees {
+struct ProgramProperties {
     int in_degree;
     int out_degree;
+    int weight;
+    int total_weight;
 
-    Degrees() : in_degree(0), out_degree(0) {}
+    ProgramProperties() : in_degree(0), out_degree(0), weight(0), total_weight(0) {}
+    ProgramProperties( int weight ) : in_degree(0), out_degree(0), weight(weight), total_weight(0) {}
+    template <class ProgramDescriptor>
+    ProgramProperties( const Program<ProgramDescriptor>& prog ) : in_degree(0), out_degree( prog.children.size() ), weight( prog.weight ), total_weight(0) {}
 };
 
 int main( int argc, char *argv[] )
@@ -98,46 +117,39 @@ int main( int argc, char *argv[] )
 	fprintf( stderr, "Failed to open file %s.", input_path );
 	return EX_NOINPUT;
     }
-    
+
+    // the mapped file is going to stick around for the entire duration
+    // of the program, so no need to copy things around.
     std::string_view v( input_file.data(), input_file.size() );
     trim_right( v, " \t\r\v\n" );
     auto lines = split( v, '\n' );
 
-    std::vector<BasicProgram> progs( lines.size() );
-    std::transform( lines.begin(), lines.end(), progs.begin(), []( const auto& line ) {
+    std::unordered_map<BasicProgram, ProgramProperties, SHash<BasicProgram>> progs;
+    std::transform( lines.begin(), lines.end(), std::inserter( progs, progs.begin() ), []( const auto& line ) {
 	BasicProgram prog;
 	parse_prog( line.begin(), line.end(), prog );
-	return prog;
+	ProgramProperties prop( prog );
+	return std::make_pair( prog, prop );
     } );
-
-    using PD = BasicProgram::program_descriptor_type;
-    std::unordered_map<PD, Degrees, Hash<PD>> degree_property_map;
-    for ( const auto& prog: progs ) {
-	const auto& name = prog.name;
+    
+    std::for_each( progs.begin(), progs.end(), [&] ( const auto& p ) {
+	const auto& prog = p.first;
 	const auto& children = prog.children;
-	auto it = degree_property_map.find( name );
-	if ( it == degree_property_map.end() ) {
-	    it = degree_property_map.insert( it, std::make_pair( name, Degrees() ) );
-	}
-	(it->second).out_degree += children.size();
-	for ( const auto& child: children ) {
-	    auto it_child = degree_property_map.find( child );
-	    if ( it_child == degree_property_map.end() ) {
-		it_child = degree_property_map.insert( it_child, std::make_pair( child, Degrees() ) );
-	    }
-	    (it_child->second).in_degree++;
-	}
-    }
-    auto it = std::find_if( degree_property_map.begin(), degree_property_map.end(), []( const std::pair<PD, Degrees>& p ) {
+	std::for_each( children.begin(), children.end(), [&]( const auto& child ) {
+	    const BasicProgram child_prog( child );
+	    auto child_it = progs.find( child_prog );
+	    child_it->second.in_degree++;
+	} );
+    } );
+    auto root = std::find_if( progs.begin(), progs.end(), []( const auto& p ) {
 	return p.second.in_degree == 0;
     } );
-    if ( it != degree_property_map.end() ) {
-	auto name = it->first;
+    if ( root != progs.end() ) {
+	auto name = root->first.name;
 	print_container( std::cout, name );
     } else {
 	std::cerr << "You done fucked up\n";
 	return 1;
     }
-
-    return 0; 
+    return 0;
 }
