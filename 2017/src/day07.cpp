@@ -28,9 +28,37 @@ namespace phoenix = boost::phoenix;
 namespace qi = boost::spirit::qi;
 namespace ascii = boost::spirit::ascii;
 
-void _append(const std::vector<char>& str, std::vector<std::vector<char>> v) {
-    v.push_back(str);
-    return;
+constexpr auto size_type( const auto v ) return static_cast<size_t>(v);
+
+template <class Container>
+auto odd_one_out( const Container& v )
+{
+    using T = Container::value_type;
+    return odd_one_out( v, []( const T& item1, const T& item2 ) { return item1 == item2; } );
+}
+
+template <class Container, class Lambda>
+auto odd_one_out( const Container& v, const Lambda& eq )
+{
+    if ( v.size() <= 2 )
+	return v.end();
+    const auto& ref_item = *v.cbegin();
+    auto& odd_it = v.cbegin();
+    auto it = v.cbegin();
+    for (; it != v.cend(); std::advance( it, 1 ) ) {
+	const auto& item = *it;
+	if ( !eq( item, ref_item ) ) {
+	    if ( std::next( it, 1 ) == v.end() ) {
+		return it;
+	    }
+	    const auto& next_item = *std::next( it , 1 );
+	    if ( eq( next_item, ref_item ) ) {
+		return it;
+	    }
+	    return v.cbegin();
+	}
+    }
+    return it;
 }
 
 template <class ProgramDescriptor>
@@ -91,6 +119,23 @@ bool parse_prog(Iterator first, Iterator last,
     return match;
 }
 
+template <class ProgsMap, class Iterator, class Inspector>
+void dfs( Iterator& root, ProgsMap& pm, Inspector& inspector )
+{
+    using ProgramType = ProgsMap::key_type;
+    auto& root_props = root->second;
+    auto& root_prog = root->first;
+    for ( auto& child: children ) {
+	auto child_it = pm.find( ProgramType( child ) );
+	dfs( child_it, pm, inspector );
+	root_props.total_weight += child_it->second.total_weight;
+    }
+    // TODO: have the inspector do weight inspection
+    root_props.total_weight += root_props.weight;
+
+    return;
+}
+
 struct ProgramProperties {
     int in_degree;
     int out_degree;
@@ -131,7 +176,8 @@ int main( int argc, char *argv[] )
 	ProgramProperties prop( prog );
 	return std::make_pair( prog, prop );
     } );
-    
+
+    // just a for loop with extra steps, innit?
     std::for_each( progs.begin(), progs.end(), [&] ( const auto& p ) {
 	const auto& prog = p.first;
 	const auto& children = prog.children;
