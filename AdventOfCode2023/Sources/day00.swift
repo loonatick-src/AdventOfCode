@@ -1,13 +1,13 @@
 import Foundation
 
 // TODO: an iterator class that takes e.g. a `String` and the `next()` method causes tokenization and parse into a struct
-class CharSplitIterator: IteratorProtocol {
-    typealias Element = Substring
+class CharSplitIterator<S: StringProtocol>: IteratorProtocol {
+    typealias Element = S.SubSequence
     let delimiter: Character
-    let source: String
+    let source: S
     var currentIndex: String.Index?
     
-    init(source: String, delimiter: Character) {
+    init(source: S, delimiter: Character) {
         self.delimiter = delimiter
         self.source = source
         self.currentIndex = source.startIndex
@@ -17,7 +17,7 @@ class CharSplitIterator: IteratorProtocol {
         guard let startIndex = currentIndex else { return nil }
         var endIndex = self.source.endIndex // past the end position
         if let substrEndIndex = source[startIndex...].firstIndex(of: self.delimiter) {
-            endIndex = substrEndIndex.samePosition(in: self.source)!
+            endIndex = substrEndIndex
             self.currentIndex = self.source.index(after: endIndex)
         } else {
             self.currentIndex = nil
@@ -26,18 +26,18 @@ class CharSplitIterator: IteratorProtocol {
     }
 }
 
-class CharSplitSequence: Sequence {
-    typealias Element = CharSplitIterator.Element
+class CharSplitSequence<S: StringProtocol>: Sequence {
+    typealias Element = CharSplitIterator<S>.Element
     
-    let source: String
+    let source: S
     let delimiter: Character
     
-    init(source: String, delimiter: Character) {
+    init(source: S, delimiter: Character) {
         self.source = source
         self.delimiter = delimiter
     }
     
-    public func makeIterator() -> CharSplitIterator {
+    public func makeIterator() -> CharSplitIterator<S> {
         return CharSplitIterator(source: self.source, delimiter: self.delimiter)
     }
 }
@@ -48,7 +48,7 @@ func readAoCInput(pathString: String) throws -> String {
     guard let string = String(data: data, encoding: .utf8) else {
         throw NSError(domain: "benchod wtf is domain", code: 500, userInfo: [NSLocalizedDescriptionKey: "Failed to convert data to string"])
     }
-    return string
+    return string.trimmingCharacters(in: .whitespacesAndNewlines)
 }
 
 // MARK: Value Semantics and COW

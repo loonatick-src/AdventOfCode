@@ -12,7 +12,7 @@ let package = Package(
       name: "AdventOfCode2023",
       dependencies: [],
       resources: [
-        .copy("data")
+        .process("../Resources/"),
       ]
     )
   ]
